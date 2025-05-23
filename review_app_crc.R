@@ -24,7 +24,7 @@ highlight_date_regex <- "(?i)\\b(19\\d{2}|20\\d{2}|January|February|March|April|
 annotation_type <- "crc"
 # IMPORTANT: Adjust rootDir to your actual project location
 # rootDir <- "P:/ORD_Curtius_202210036D/chartReview_May2025" # Example Windows path
-rootDir <- "~/VA_IBD/" # Example Linux/macOS path - Using ~ might be unreliable in non-interactive sessions, prefer absolute paths if issues arise.
+rootDir <- "~/" # Example Linux/macOS path - Using ~ might be unreliable in non-interactive sessions, prefer absolute paths if issues arise.
 outDir <- file.path(rootDir, paste0("output_csvs_", annotation_type, "_", reviewer))
 
 # Create output directory if it doesn't exist
