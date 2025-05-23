@@ -1,4 +1,0 @@
-"ID","CRC","IBD","Stage","DiagnosisDate"
-"123",TRUE,TRUE,NA,"2025-05-14"
-"456",TRUE,FALSE,"I","2025-05-13"
-"789",FALSE,TRUE,"I","2025-05-20"
