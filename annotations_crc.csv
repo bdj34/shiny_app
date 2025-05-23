@@ -1,0 +1,4 @@
+"ID","Diagnosis","DifficultCase","DxYearMonth","T","N","M"
+"789","CRC",FALSE,"Unknown","Unknown","Unknown","Unknown"
+"123","Neither",TRUE,"Unknown","Unknown","Unknown","Unknown"
+"456","Neither",FALSE,"Unknown","Unknown","Unknown","Unknown"
