@@ -4,24 +4,24 @@ library(shinyjs)
 library(purrr) # For map_dfr
 
 # --- Configuration --- EDIT THESE FIELDS ---
-reviewer <- "brian_path_colo"
-optional_blacklisted_pids <- ""
-max_lesions_to_capture <- 3 # Define max number of lesions to have fields for
+reviewer <- "brian"
+#optional_blacklisted_sids <- ""
+max_lesions_to_capture <- 5 # Define max number of lesions to have fields for
 
-highlight_morphology_regex <- "(?i)(polypoid|flat|depressed|invisible|random|non-polypoid)"
-highlight_lesion_type_regex <- "(?i)(adenocarcinoma|dysplasia|tubulovillous adenoma|villous adenoma|tubular adenoma|sessile serrated|ssl|ssa|tsa|hyperplastic|adenoma)" # Reordered for potential highlighting priority
-highlight_dysplasia_grade_regex <- "(?i)(low grade dysplasia|high grade dysplasia|lgd|hgd|indefinite for dysplasia|no dysplasia)"
-highlight_resection_regex <- "(?i)(complete resection|incomplete resection|resection margin|piecemeal|en bloc|R0|R1|R2)"
-highlight_colitis_terms_regex <- "(?i)(colitis|proctitis|inflammation|cryptitis|crypt abscess)"
-highlight_location_regex <- "(?i)(rectum|rectosigmoid|sigmoid|descending|splenic|transverse|hepatic|ascending|cecum|appendix|colon|ileum)"
-highlight_date_regex <- "(?i)\\b(19\\d{2}|20\\d{2}|January|February|March|April|May|June|July|August|September|October|November|December)\\b"
-highlight_procedure_regex <- "(?i)(polypectomy|biopsy|EMR|ESD|colectomy)"
-# --- End Configuration ---
-
-# --- Setup ---
+# ---  EDIT: Setup ---
 annotation_type <- "path_colo_review"
-rootDir <- "~/VA_IBD/"
+rootDir <- "~/"
 outDir <- file.path(rootDir, paste0("output_csvs_", annotation_type, "_", reviewer))
+
+# EDIT: Optional regexes for highlighting text to make reviewing easier
+highlight_morphology_regex <- "(?i)(polypoid|flat|depressed|elevated|ulcerated|dalm|invisible|random|non-polypoid|pedunculated|sessile)"
+highlight_lesion_type_regex <- "(?i)(adenocarcinoma|dysplasia|dysplastic|tubulovillous adenoma|villous adenoma|tubular adenoma|sessile serrated|traditional serrated adenoma|ssl|ssa|tsa|hyperplastic|adenoma)" # Reordered for potential highlighting priority
+highlight_dysplasia_grade_regex <- "(?i)(low grade dysplasia|low-grade dysplasia|high grade dysplasia|high-grade dysplasia|lgd|hgd|indefinite for dysplasia|no dysplasia)"
+highlight_resection_regex <- "(?i)(complete resection|incomplete resection|resected|margin|piecemeal|en bloc|R0|R1|R2|incompletely|completely)"
+highlight_colitis_terms_regex <- "(?i)(colitis|proctitis|inflammation|inflam|cryptitis|crypt abscess)"
+highlight_location_regex <- "(?i)(rectum|rectosigmoid|sigmoid|descending|splenic|transverse|hepatic|ascending|cecum|appendix|colon\\b|ileum)"
+highlight_procedure_regex <- "(?i)(polypectomy|biopsy|EMR|ESD|colectomy|endoscopic mucosal|endoscopic submucosal|ectomy)"
+# --- End Configuration. Should not need to edit anything beyond here ---
 
 if (!dir.exists(outDir)) {
   message("Creating output directory: ", outDir)
@@ -57,7 +57,7 @@ if (length(existing_files) > 0) {
   all_prev_annotations <- purrr::map_dfr(existing_files, function(f) { tryCatch({ df <- read.csv(f, colClasses = "character", stringsAsFactors = FALSE, fill = TRUE, header = TRUE); if ("ID" %in% names(df)) { valid_ids <- df$ID[!is.na(df$ID) & nzchar(df$ID)]; if(length(valid_ids) > 0) { data.frame(ID = valid_ids, stringsAsFactors = FALSE) } else { NULL } } else { NULL } }, error = function(e) { NULL }) })
   if (!is.null(all_prev_annotations) && nrow(all_prev_annotations) > 0 && "ID" %in% names(all_prev_annotations)) { previously_reviewed_ids <- unique(all_prev_annotations$ID) }
 }
-if (exists("optional_blacklisted_pids") && nzchar(optional_blacklisted_pids)) { manual_blacklist <- trimws(unlist(strsplit(optional_blacklisted_pids, ",|;|\n"))); manual_blacklist <- manual_blacklist[nzchar(manual_blacklist)]; if(length(manual_blacklist) > 0) { previously_reviewed_ids <- unique(c(previously_reviewed_ids, manual_blacklist)) } }
+if (exists("optional_blacklisted_sids") && nzchar(optional_blacklisted_sids)) { manual_blacklist <- trimws(unlist(strsplit(optional_blacklisted_sids, ",|;|\n"))); manual_blacklist <- manual_blacklist[nzchar(manual_blacklist)]; if(length(manual_blacklist) > 0) { previously_reviewed_ids <- unique(c(previously_reviewed_ids, manual_blacklist)) } }
 patient_data_for_session <- all_potential_patient_data[!all_potential_patient_data$ID %in% previously_reviewed_ids, ]
 message("Filtered patient list for this session. ", nrow(patient_data_for_session), " patients remaining to be reviewed.")
 if(nrow(patient_data_for_session) == 0) { message("WARNING: No unreviewed patients remaining for this session.") }
@@ -509,7 +509,6 @@ server <- function(input, output, session) {
         highlighted_text <- gsub(highlight_resection_regex, "<span class='highlight-resect'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_colitis_terms_regex, "<span class='highlight-colitis'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_location_regex, "<span class='highlight-loc'>\\1</span>", highlighted_text, perl = TRUE)
-        highlighted_text <- gsub(highlight_date_regex, "<span class='highlight-date'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_procedure_regex, "<span class='highlight-proc'>\\1</span>", highlighted_text, perl = TRUE)
         HTML(highlighted_text)
       } else { HTML(paste("Error: Could not find text for Patient ID", pid)) }
