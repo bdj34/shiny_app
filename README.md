@@ -16,7 +16,6 @@ This repository contains R Shiny applications designed to facilitate the chart r
 - `review_app_ibd.R`: Shiny app tailored for reviewing IBD-related data.
 - `pre_processing_for_crc_shiny_app.R`: Preprocessing script for CRC data.
 - `pre_processing_for_ibd_shiny_app.R`: Preprocessing script for IBD data.
-- `annotations.csv`, `annotations_crc.csv`, `annotations_crc_brian.csv`: Example annotation files.
 - `shiny_app.Rproj`: R project file for the Shiny applications.
 
 ## Installation and Usage
