@@ -9,7 +9,7 @@ optional_blacklisted_pids <- ""
 max_lesions_to_capture <- 3 # Define max number of lesions to have fields for
 
 highlight_morphology_regex <- "(?i)(polypoid|flat|depressed|invisible|random|non-polypoid)"
-highlight_lesion_type_regex <- "(?i)(adenoma|serrated|ssl|ssa|tsa|hyperplastic|adenocarcinoma|dysplasia|tubular|villous|tubulovillous)"
+highlight_lesion_type_regex <- "(?i)(adenocarcinoma|dysplasia|tubulovillous adenoma|villous adenoma|tubular adenoma|sessile serrated|ssl|ssa|tsa|hyperplastic|adenoma)" # Reordered for potential highlighting priority
 highlight_dysplasia_grade_regex <- "(?i)(low grade dysplasia|high grade dysplasia|lgd|hgd|indefinite for dysplasia|no dysplasia)"
 highlight_resection_regex <- "(?i)(complete resection|incomplete resection|resection margin|piecemeal|en bloc|R0|R1|R2)"
 highlight_colitis_terms_regex <- "(?i)(colitis|proctitis|inflammation|cryptitis|crypt abscess)"
@@ -35,14 +35,15 @@ message("Output file for this session: ", out_file)
 
 # --- Data Loading ---
 all_potential_patient_data <- data.frame(
-  ID = c("PAT001", "PAT002", "PAT003", "PAT004", "PAT005", "PAT006"),
+  ID = c("PAT001", "PAT002", "PAT003", "PAT004", "PAT005", "PAT006", "PAT007"),
   Text = c(
     "Patient PAT001: Colonoscopy on January 10, 2023. Findings: Sigmoid colon shows a 1.5 cm polypoid adenoma with low grade dysplasia. Resection appears complete (R0). Background mucosa shows mild active colitis, proctitis only. Procedure: Polypectomy.",
     "Patient PAT002: Pathology report from 2022-05-20. Specimen: Cecum biopsy. Diagnosis: Tubular adenoma, 0.8 cm, with high grade dysplasia. Margins involved (R1). Extensive chronic colitis noted.",
     "Patient PAT003: Report date: April 2024. Flexible sigmoidoscopy to rectum. Multiple small hyperplastic polyps found, not removed. No evidence of colitis. No definite lesion concerning for malignancy. Some invisible changes noted, random biopsies taken.",
     "Patient PAT004: Colectomy specimen from July 1, 2021. Invasive adenocarcinoma, 3.0 cm, arising in a tubulovillous adenoma. Margins clear. Pancolitis with moderate activity. T3N1M0.",
     "Patient PAT005: EMR of a 2.5cm flat lesion in the ascending colon. Pathology: Sessile serrated lesion with dysplasia. Resection piecemeal, margins uncertain.",
-    "Patient PAT006: Random biopsies from transverse colon show focal active colitis, mild. No polyps seen."
+    "Patient PAT006: Random biopsies from transverse colon show focal active colitis, mild. No polyps seen.",
+    "Patient PAT007: Sigmoidoscopy. One 0.5cm polypoid lesion, morphology invisible/random, taken for biopsy. Resection not applicable. Another 1.2cm non-polypoid lesion, EMR performed."
   ),
   stringsAsFactors = FALSE
 )
@@ -61,17 +62,18 @@ patient_data_for_session <- all_potential_patient_data[!all_potential_patient_da
 message("Filtered patient list for this session. ", nrow(patient_data_for_session), " patients remaining to be reviewed.")
 if(nrow(patient_data_for_session) == 0) { message("WARNING: No unreviewed patients remaining for this session.") }
 
-# ** UPDATED annotations_schema for multiple lesions **
+# ** UPDATED annotations_schema for EMR/ESD **
 base_schema_cols <- list(
   ID = character(),
   DifficultCase = logical(),
   ProcedureType = character(),
   LesionPresent = character(),
-  NumLesions = character() # Store selected number of lesions
+  NumLesions = character()
 )
 lesion_cols_template <- list(
   Type = character(), Morphology = character(), DysplasiaGrade = character(),
   SizeCM = character(), LocationLesion = character(), ResectionCompleteness = character(),
+  EMRperformed = logical(), ESDperformed = logical(), # New EMR/ESD fields
   Tstage = character(), Nstage = character(), Mstage = character()
 )
 lesion_fields_schema <- list()
@@ -91,19 +93,19 @@ annotations_schema <- data.frame(c(base_schema_cols, lesion_fields_schema, colit
 
 # --- UI Definition ---
 # ** UPDATED Choices **
-lesion_type_choices <- c("Select..." = "", "Adenoma", "Tubular Adenoma", "Villous Adenoma", "Tubulovillous Adenoma", "Sessile Serrated Lesion/Polyp (SSL/P)", "Traditional Serrated Adenoma (TSA)", "Hyperplastic Polyp", "Adenocarcinoma", "Dysplasia", "Other", "Unknown") # Removed Not Applicable
+lesion_type_choices <- c("Select..." = "", "Adenocarcinoma", "Dysplasia", "Tubulovillous Adenoma", "Villous Adenoma", "Tubular Adenoma", "Sessile Serrated Lesion/Polyp (SSL/P)", "Traditional Serrated Adenoma (TSA)", "Hyperplastic Polyp", "Adenoma", "Other", "Unknown") # Reordered, "Not Applicable" removed
 morphology_choices <- c("Select..." = "", "Polypoid", "Non-polypoid", "Invisible/Random Biopsies", "Unknown") # Simplified
 dysplasia_grade_choices <- c("Select..." = "", "Low-grade Dysplasia (LGD)", "High-grade Dysplasia (HGD)", "Indefinite for Dysplasia", "No Dysplasia", "Not Applicable", "Unknown")
 location_choices <- c("Select..." = "", "Unknown", "Rectum", "Rectosigmoid", "Sigmoid Colon", "Descending Colon", "Splenic Flexure", "Transverse Colon", "Hepatic Flexure", "Ascending Colon", "Cecum", "Ileocecal Valve", "Terminal Ileum", "Appendix", "Multiple Locations", "Diffuse", "Other")
-resection_choices <- c("Select..." = "", "Complete (R0)", "Incomplete - Microscopic (R1)", "Incomplete - Macroscopic (R2)", "Piecemeal", "Uncertain", "Not Resected", "Not Applicable") # Added R0-R2
+resection_choices <- c("Select..." = "", "Complete (R0)", "Incomplete - Microscopic (R1)", "Incomplete - Macroscopic (R2)", "Piecemeal", "Uncertain", "Not Resected", "Not Applicable") # R0-R2 labels updated
 colitis_severity_choices <- c("Select..." = "", "Quiescent / Inactive", "Mild", "Moderate", "Severe", "Unknown")
 size_cm_values <- c(0, round(seq(0.1, 10, by = 0.1), 1))
-size_cm_choices <- c("Select..." = "", "Unknown", "Biopsy only" = "Biopsy only", setNames(as.character(size_cm_values[size_cm_values > 0]), paste0(sprintf("%.1f", size_cm_values[size_cm_values > 0]), " cm")), "10+ cm" = "10+") # Updated "0 cm"
-procedure_choices <- c("Select..." = "", "Polypectomy/Biopsy", "EMR (Endoscopic Mucosal Resection)", "ESD (Endoscopic Submucosal Dissection)", "Colectomy")
+size_cm_choices <- c("Select..." = "", "Unknown", "Biopsy only" = "Biopsy only", setNames(as.character(size_cm_values[size_cm_values > 0]), paste0(sprintf("%.1f", size_cm_values[size_cm_values > 0]), " cm")), "10+ cm" = "10+")
+procedure_choices <- c("Select..." = "", "Colonoscopy", "Sigmoidoscopy", "Colectomy") # Updated
 t_stage_choices <- c("Select..." = "", "Unknown", "Tis", "T1", "T2", "T3", "T4a", "T4b", "TX", "Not Applicable")
 n_stage_choices <- c("Select..." = "", "Unknown", "N0", "N1", "N1a", "N1b", "N1c", "N2", "N2a", "N2b", "NX", "Not Applicable")
 m_stage_choices <- c("Select..." = "", "Unknown", "M0", "M1", "M1a", "M1b", "M1c", "MX", "Not Applicable")
-num_lesions_choices <- c("Select..." = "", 1:max_lesions_to_capture, paste0(max_lesions_to_capture,"+"))
+num_lesions_choices <- c("Select..." = "", "1", "2", "3", "4", "5+") # Updated
 
 
 # Function to create a set of lesion UI fields
@@ -111,7 +113,7 @@ create_lesion_ui <- function(lesion_number) {
   ns_prefix <- paste0("lesion", lesion_number, "_")
   tagList(
     h6(paste("Lesion", lesion_number, "Details:")),
-    selectInput(paste0(ns_prefix, "type"), "Primary Lesion Type:", choices = lesion_type_choices, selected = ""),
+    selectInput(paste0(ns_prefix, "type"), "Lesion Type:", choices = lesion_type_choices, selected = ""), # Label changed
     selectInput(paste0(ns_prefix, "morphology"), "Morphology:", choices = morphology_choices, selected = ""),
     div(id = paste0(ns_prefix, "dysplasia_grade_div"), style = "display:none;",
         selectInput(paste0(ns_prefix, "dysplasia_grade"), "Dysplasia Grade:", choices = dysplasia_grade_choices, selected = "")
@@ -119,6 +121,9 @@ create_lesion_ui <- function(lesion_number) {
     selectInput(paste0(ns_prefix, "size_cm"), "Size (cm):", choices = size_cm_choices, selected = ""),
     selectInput(paste0(ns_prefix, "location"), "Location:", choices = location_choices, selected = ""),
     selectInput(paste0(ns_prefix, "resection"), "Completeness of Resection:", choices = resection_choices, selected = ""),
+    # ** Added EMR/ESD Checkboxes **
+    checkboxInput(paste0(ns_prefix, "emr"), "EMR performed?", FALSE),
+    checkboxInput(paste0(ns_prefix, "esd"), "ESD performed?", FALSE),
     div(id = paste0(ns_prefix, "tnm_div"), style = "display: none;",
         h6(paste("Lesion", lesion_number, "Adenocarcinoma Staging:")),
         selectInput(paste0(ns_prefix, "t_stage"), "T Stage:", choices = t_stage_choices, selected = ""),
@@ -145,11 +150,9 @@ ui <- fluidPage(
       hr(),
       h5("Lesion Findings"),
       radioButtons("lesion_present", "Lesions of interest present?", choices = c("Yes", "No", "Uncertain"), selected = character(0), inline = TRUE),
-      # Conditional UI for number of lesions
       div(id = "num_lesions_div", style = "display: none;",
           selectInput("num_lesions", "Number of Lesions to Detail:", choices = num_lesions_choices, selected = "")
       ),
-      # Placeholder for dynamic lesion fields
       uiOutput("dynamic_lesion_fields_ui"),
       hr(),
       h5("Colitis Findings"),
@@ -207,17 +210,10 @@ server <- function(input, output, session) {
   output$dynamic_lesion_fields_ui <- renderUI({
     num_to_show <- input$num_lesions
     if (is.null(num_to_show) || num_to_show == "" || input$lesion_present != "Yes") {
-      return(NULL) # Don't render if not applicable
+      return(NULL)
     }
-    # Handle "X+" case by capping at max_lesions_to_capture
-    num_to_show_actual <- if (grepl("\\+", num_to_show)) {
-      max_lesions_to_capture
-    } else {
-      min(as.integer(num_to_show), max_lesions_to_capture)
-    }
-
+    num_to_show_actual <- if (grepl("\\+", num_to_show)) max_lesions_to_capture else min(as.integer(num_to_show), max_lesions_to_capture)
     if (is.na(num_to_show_actual) || num_to_show_actual < 1) return(NULL)
-
     lesion_uis <- lapply(1:num_to_show_actual, create_lesion_ui)
     do.call(tagList, lesion_uis)
   })
@@ -228,9 +224,8 @@ server <- function(input, output, session) {
     updateCheckboxInput(session, "difficult_case", value = FALSE)
     updateSelectInput(session, "procedure_type", selected = "")
     updateRadioButtons(session, "lesion_present", selected = character(0))
-    updateSelectInput(session, "num_lesions", selected = "") # Reset num_lesions
+    updateSelectInput(session, "num_lesions", selected = "")
 
-    # Reset all possible lesion fields
     for (i in 1:max_lesions_to_capture) {
       ns_prefix <- paste0("lesion", i, "_")
       updateSelectInput(session, paste0(ns_prefix, "type"), selected = "")
@@ -239,11 +234,15 @@ server <- function(input, output, session) {
       updateSelectInput(session, paste0(ns_prefix, "size_cm"), selected = "")
       updateSelectInput(session, paste0(ns_prefix, "location"), selected = "")
       updateSelectInput(session, paste0(ns_prefix, "resection"), selected = "")
+      updateCheckboxInput(session, paste0(ns_prefix, "emr"), value = FALSE) # Reset EMR
+      updateCheckboxInput(session, paste0(ns_prefix, "esd"), value = FALSE) # Reset ESD
       updateSelectInput(session, paste0(ns_prefix, "t_stage"), selected = "")
       updateSelectInput(session, paste0(ns_prefix, "n_stage"), selected = "")
       updateSelectInput(session, paste0(ns_prefix, "m_stage"), selected = "")
       shinyjs::hide(paste0(ns_prefix, "dysplasia_grade_div"))
       shinyjs::hide(paste0(ns_prefix, "tnm_div"))
+      shinyjs::enable(paste0(ns_prefix, "size_cm")) # Ensure enabled on reset
+      shinyjs::enable(paste0(ns_prefix, "resection")) # Ensure enabled on reset
     }
 
     updateRadioButtons(session, "colitis_present", selected = character(0))
@@ -254,7 +253,6 @@ server <- function(input, output, session) {
     updateSelectInput(session, "colitis_severity", selected = "")
 
     shinyjs::hide("num_lesions_div"); shinyjs::hide("colitis_details_div")
-    # dynamic_lesion_fields_ui will be NULL due to num_lesions being reset
     shinyjs::disable("submit")
   }
 
@@ -270,25 +268,17 @@ server <- function(input, output, session) {
       colitis_present_val <- record$ColitisPresent %||% ""
       num_lesions_val <- record$NumLesions %||% ""
 
-      # Set visibility of num_lesions_div first
       show_num_lesions_div <- lesion_present_val == "Yes"
       shinyjs::toggle(id = "num_lesions_div", condition = show_num_lesions_div)
-
-      # Then update num_lesions input, which will trigger dynamic UI rendering
-      # This needs to happen before trying to update the dynamic fields themselves
       updateSelectInput(session, "num_lesions", selected = num_lesions_val)
 
-      # Use a reactive flush to ensure num_lesions update and UI render before proceeding
-      shinyjs::delay(0, { # Delay of 0 ms, just to push to next event cycle
+      shinyjs::delay(0, {
         isolate({
           updateCheckboxInput(session, "difficult_case", value = as.logical(record$DifficultCase %||% FALSE))
           updateSelectInput(session, "procedure_type", selected = record$ProcedureType %||% "")
-          updateRadioButtons(session, "lesion_present", selected = lesion_present_val)
-          # Lesion fields will be populated after dynamic UI is rendered by observing num_lesions
-          # For now, just set the visibility of colitis details
+          updateRadioButtons(session, "lesion_present", selected = lesion_present_val) # Set this before lesion fields
           show_colitis_details <- colitis_present_val == "Yes"
           shinyjs::toggle(id = "colitis_details_div", condition = show_colitis_details)
-
           updateRadioButtons(session, "colitis_present", selected = colitis_present_val)
           updateCheckboxInput(session, "colitis_rectum", value = as.logical(record$ColitisRectum %||% FALSE))
           updateCheckboxInput(session, "colitis_sigmoid", value = as.logical(record$ColitisSigmoid %||% FALSE))
@@ -299,12 +289,12 @@ server <- function(input, output, session) {
           updateSelectInput(session, "colitis_severity", selected = record$ColitisSeverity %||% "")
         })
 
-        # Now populate the dynamic lesion fields if they exist in the record
         num_lesions_to_load <- if (grepl("\\+", num_lesions_val)) max_lesions_to_capture else as.integer(num_lesions_val)
         if (!is.na(num_lesions_to_load) && num_lesions_to_load > 0) {
           for (i in 1:min(num_lesions_to_load, max_lesions_to_capture)) {
             ns_prefix <- paste0("lesion", i, "_")
             lesion_type_val_i <- record[[paste0("Lesion", i, "_Type")]] %||% ""
+            morphology_val_i <- record[[paste0("Lesion", i, "_Morphology")]] %||% ""
 
             show_dysplasia_i <- lesion_type_val_i %in% c("Adenoma", "Tubular Adenoma", "Villous Adenoma", "Tubulovillous Adenoma", "Sessile Serrated Lesion/Polyp (SSL/P)", "Traditional Serrated Adenoma (TSA)", "Dysplasia")
             show_tnm_i <- lesion_type_val_i == "Adenocarcinoma"
@@ -314,22 +304,36 @@ server <- function(input, output, session) {
 
             isolate({
               updateSelectInput(session, paste0(ns_prefix, "type"), selected = lesion_type_val_i)
-              updateSelectInput(session, paste0(ns_prefix, "morphology"), selected = record[[paste0("Lesion", i, "_Morphology")]] %||% "")
+              updateSelectInput(session, paste0(ns_prefix, "morphology"), selected = morphology_val_i)
               updateSelectInput(session, paste0(ns_prefix, "dysplasia_grade"), selected = record[[paste0("Lesion", i, "_DysplasiaGrade")]] %||% "")
               updateSelectInput(session, paste0(ns_prefix, "size_cm"), selected = record[[paste0("Lesion", i, "_SizeCM")]] %||% "")
               updateSelectInput(session, paste0(ns_prefix, "location"), selected = record[[paste0("Lesion", i, "_LocationLesion")]] %||% "")
               updateSelectInput(session, paste0(ns_prefix, "resection"), selected = record[[paste0("Lesion", i, "_ResectionCompleteness")]] %||% "")
+              updateCheckboxInput(session, paste0(ns_prefix, "emr"), value = as.logical(record[[paste0("Lesion", i, "_EMRperformed")]]) %||% FALSE)
+              updateCheckboxInput(session, paste0(ns_prefix, "esd"), value = as.logical(record[[paste0("Lesion", i, "_ESDperformed")]]) %||% FALSE)
               updateSelectInput(session, paste0(ns_prefix, "t_stage"), selected = record[[paste0("Lesion", i, "_Tstage")]] %||% "")
               updateSelectInput(session, paste0(ns_prefix, "n_stage"), selected = record[[paste0("Lesion", i, "_Nstage")]] %||% "")
               updateSelectInput(session, paste0(ns_prefix, "m_stage"), selected = record[[paste0("Lesion", i, "_Mstage")]] %||% "")
             })
+            # Apply auto-fill and disable logic after setting morphology
+            if(morphology_val_i == "Invisible/Random Biopsies"){
+              isolate({
+                updateSelectInput(session, paste0(ns_prefix, "size_cm"), selected = "Biopsy only")
+                updateSelectInput(session, paste0(ns_prefix, "resection"), selected = "Not Applicable")
+              })
+              shinyjs::disable(paste0(ns_prefix, "size_cm"))
+              shinyjs::disable(paste0(ns_prefix, "resection"))
+            } else {
+              shinyjs::enable(paste0(ns_prefix, "size_cm"))
+              shinyjs::enable(paste0(ns_prefix, "resection"))
+            }
           }
         }
         if(as.logical(record$ColitisPancolitis %||% FALSE)){
           shinyjs::runjs("Shiny.setInputValue('colitis_pancolitis', true, {priority: 'event'});")
         }
         check_all_fields_validity()
-      }) # End delay
+      })
     } else {
       message("No existing annotation found. Resetting inputs.")
       reset_inputs()
@@ -338,20 +342,14 @@ server <- function(input, output, session) {
 
 
   # --- Conditional UI Logic ---
-  # This function manages visibility of sections based on primary radio buttons and num_lesions
   toggle_conditional_fields_path_colo <- function() {
     lesion_present_val <- input$lesion_present
     colitis_present_val <- input$colitis_present
-    num_lesions_val <- input$num_lesions
 
-    # Show/hide "Number of Lesions" dropdown
     show_num_lesions_div <- !is.null(lesion_present_val) && lesion_present_val == "Yes"
     shinyjs::toggle(id = "num_lesions_div", condition = show_num_lesions_div)
-    if (!show_num_lesions_div) {
-      isolate(updateSelectInput(session, "num_lesions", selected = "")) # Reset if hidden
-    }
+    if (!show_num_lesions_div) { isolate(updateSelectInput(session, "num_lesions", selected = "")) }
 
-    # Show/hide Colitis Details
     show_colitis_details <- !is.null(colitis_present_val) && colitis_present_val == "Yes"
     shinyjs::toggle(id = "colitis_details_div", condition = show_colitis_details)
     if (!show_colitis_details) {
@@ -363,19 +361,16 @@ server <- function(input, output, session) {
         updateSelectInput(session, "colitis_severity", selected = "")
       })
     }
-
-    # Conditional visibility for dysplasia/TNM within each dynamic lesion UI
-    # This is now handled by observers on individual lesion_type inputs
   }
 
-  # Observers for primary radio buttons
   observeEvent(input$lesion_present, { toggle_conditional_fields_path_colo(); check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
   observeEvent(input$colitis_present, { toggle_conditional_fields_path_colo(); check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
-  observeEvent(input$num_lesions, { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE) # Validity depends on this
+  observeEvent(input$num_lesions, { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
 
-  # Observers for dynamic lesion type fields to control their dysplasia/TNM sections
+  # Observers for dynamic lesion fields
   lapply(1:max_lesions_to_capture, function(i) {
     ns_prefix <- paste0("lesion", i, "_")
+    # Lesion Type observer
     observeEvent(input[[paste0(ns_prefix, "type")]], {
       lesion_type_val_i <- input[[paste0(ns_prefix, "type")]]
       show_dysplasia_i <- !is.null(lesion_type_val_i) && lesion_type_val_i %in% c("Adenoma", "Tubular Adenoma", "Villous Adenoma", "Tubulovillous Adenoma", "Sessile Serrated Lesion/Polyp (SSL/P)", "Traditional Serrated Adenoma (TSA)", "Dysplasia")
@@ -385,7 +380,25 @@ server <- function(input, output, session) {
       show_tnm_i <- !is.null(lesion_type_val_i) && lesion_type_val_i == "Adenocarcinoma"
       shinyjs::toggle(id = paste0(ns_prefix, "tnm_div"), condition = show_tnm_i)
       if (!show_tnm_i) { isolate({ updateSelectInput(session, paste0(ns_prefix, "t_stage"), selected = ""); updateSelectInput(session, paste0(ns_prefix, "n_stage"), selected = ""); updateSelectInput(session, paste0(ns_prefix, "m_stage"), selected = "") })}
-      check_all_fields_validity() # Check validity when lesion type changes
+      check_all_fields_validity()
+    }, ignoreNULL = FALSE, ignoreInit = TRUE)
+
+    # Morphology observer for auto-fill
+    observeEvent(input[[paste0(ns_prefix, "morphology")]], {
+      morphology_val_i <- input[[paste0(ns_prefix, "morphology")]]
+      if (!is.null(morphology_val_i) && morphology_val_i == "Invisible/Random Biopsies") {
+        isolate({
+          updateSelectInput(session, paste0(ns_prefix, "size_cm"), selected = "Biopsy only")
+          updateSelectInput(session, paste0(ns_prefix, "resection"), selected = "Not Applicable")
+        })
+        shinyjs::disable(paste0(ns_prefix, "size_cm"))
+        shinyjs::disable(paste0(ns_prefix, "resection"))
+      } else {
+        # Re-enable if not "Invisible/Random Biopsies", but don't clear user's previous selection
+        shinyjs::enable(paste0(ns_prefix, "size_cm"))
+        shinyjs::enable(paste0(ns_prefix, "resection"))
+      }
+      check_all_fields_validity()
     }, ignoreNULL = FALSE, ignoreInit = TRUE)
   })
 
@@ -408,11 +421,12 @@ server <- function(input, output, session) {
   observeEvent(input$procedure_type, { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
   lapply(1:max_lesions_to_capture, function(i) {
     ns_prefix <- paste0("lesion", i, "_")
-    observeEvent(input[[paste0(ns_prefix, "morphology")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
     observeEvent(input[[paste0(ns_prefix, "dysplasia_grade")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
     observeEvent(input[[paste0(ns_prefix, "size_cm")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
     observeEvent(input[[paste0(ns_prefix, "location")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
     observeEvent(input[[paste0(ns_prefix, "resection")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
+    observeEvent(input[[paste0(ns_prefix, "emr")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE) # EMR/ESD are not required for submit
+    observeEvent(input[[paste0(ns_prefix, "esd")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
     observeEvent(input[[paste0(ns_prefix, "t_stage")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
     observeEvent(input[[paste0(ns_prefix, "n_stage")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
     observeEvent(input[[paste0(ns_prefix, "m_stage")]], { check_all_fields_validity() }, ignoreNULL = FALSE, ignoreInit = TRUE)
@@ -434,18 +448,28 @@ server <- function(input, output, session) {
     if (input$lesion_present == "Yes") {
       if (is.null(input$num_lesions) || input$num_lesions == "") return(FALSE)
       num_to_validate <- if (grepl("\\+", input$num_lesions)) max_lesions_to_capture else as.integer(input$num_lesions)
-      if(is.na(num_to_validate) || num_to_validate < 1) return(FALSE) # Should not happen with choices
+      if(is.na(num_to_validate) || num_to_validate < 1) return(FALSE)
 
       for (i in 1:min(num_to_validate, max_lesions_to_capture)) {
         ns_prefix <- paste0("lesion", i, "_")
         lesion_type_i <- input[[paste0(ns_prefix, "type")]]
+        morphology_i <- input[[paste0(ns_prefix, "morphology")]]
+
         if (is.null(lesion_type_i) || lesion_type_i == "") return(FALSE)
-        if (is.null(input[[paste0(ns_prefix, "morphology")]]) || input[[paste0(ns_prefix, "morphology")]] == "") return(FALSE)
+        if (is.null(morphology_i) || morphology_i == "") return(FALSE)
+
         if (lesion_type_i %in% c("Adenoma", "Tubular Adenoma", "Villous Adenoma", "Tubulovillous Adenoma", "Sessile Serrated Lesion/Polyp (SSL/P)", "Traditional Serrated Adenoma (TSA)", "Dysplasia") &&
             (is.null(input[[paste0(ns_prefix, "dysplasia_grade")]]) || input[[paste0(ns_prefix, "dysplasia_grade")]] == "")) return(FALSE)
-        if (is.null(input[[paste0(ns_prefix, "size_cm")]]) || input[[paste0(ns_prefix, "size_cm")]] == "") return(FALSE)
+
+        # Size and Resection are required unless auto-filled by morphology
+        if (morphology_i != "Invisible/Random Biopsies") {
+          if (is.null(input[[paste0(ns_prefix, "size_cm")]]) || input[[paste0(ns_prefix, "size_cm")]] == "") return(FALSE)
+          if (is.null(input[[paste0(ns_prefix, "resection")]]) || input[[paste0(ns_prefix, "resection")]] == "") return(FALSE)
+        }
+
         if (is.null(input[[paste0(ns_prefix, "location")]]) || input[[paste0(ns_prefix, "location")]] == "") return(FALSE)
-        if (is.null(input[[paste0(ns_prefix, "resection")]]) || input[[paste0(ns_prefix, "resection")]] == "") return(FALSE)
+        # EMR/ESD are not strictly required for submit
+
         if (lesion_type_i == "Adenocarcinoma") {
           if (is.null(input[[paste0(ns_prefix, "t_stage")]]) || input[[paste0(ns_prefix, "t_stage")]] == "") return(FALSE)
           if (is.null(input[[paste0(ns_prefix, "n_stage")]]) || input[[paste0(ns_prefix, "n_stage")]] == "") return(FALSE)
@@ -506,13 +530,9 @@ server <- function(input, output, session) {
         message("Submission failed: Validation check failed."); return()
       }
       pid <- patient_ids_this_session()[current_index()]
-      # Start with base fields
       new_entry_list <- list(
-        ID = as.character(pid),
-        DifficultCase = input$difficult_case,
-        ProcedureType = input$procedure_type,
-        LesionPresent = input$lesion_present,
-        NumLesions = ifelse(input$lesion_present == "Yes", input$num_lesions, ""),
+        ID = as.character(pid), DifficultCase = input$difficult_case, ProcedureType = input$procedure_type,
+        LesionPresent = input$lesion_present, NumLesions = ifelse(input$lesion_present == "Yes", input$num_lesions, ""),
         ColitisPresent = input$colitis_present,
         ColitisRectum = ifelse(input$colitis_present == "Yes", input$colitis_rectum, FALSE),
         ColitisSigmoid = ifelse(input$colitis_present == "Yes", input$colitis_sigmoid, FALSE),
@@ -523,24 +543,26 @@ server <- function(input, output, session) {
         ColitisSeverity = ifelse(input$colitis_present == "Yes", input$colitis_severity, "")
       )
 
-      # Add lesion-specific fields
       num_lesions_to_save <- 0
       if (input$lesion_present == "Yes" && !is.null(input$num_lesions) && input$num_lesions != "") {
         num_lesions_to_save <- if (grepl("\\+", input$num_lesions)) max_lesions_to_capture else as.integer(input$num_lesions)
-        num_lesions_to_save <- min(num_lesions_to_save, max_lesions_to_capture) # Cap at max
+        num_lesions_to_save <- min(num_lesions_to_save, max_lesions_to_capture)
       }
 
       for (i in 1:max_lesions_to_capture) {
         ns_prefix <- paste0("lesion", i, "_")
         is_lesion_active <- i <= num_lesions_to_save && input$lesion_present == "Yes"
         lesion_type_i <- if(is_lesion_active) input[[paste0(ns_prefix, "type")]] else ""
+        morphology_i <- if(is_lesion_active) input[[paste0(ns_prefix, "morphology")]] else ""
 
         new_entry_list[[paste0("Lesion", i, "_Type")]] <- lesion_type_i
-        new_entry_list[[paste0("Lesion", i, "_Morphology")]] <- if(is_lesion_active) input[[paste0(ns_prefix, "morphology")]] else ""
+        new_entry_list[[paste0("Lesion", i, "_Morphology")]] <- morphology_i
         new_entry_list[[paste0("Lesion", i, "_DysplasiaGrade")]] <- if(is_lesion_active && lesion_type_i %in% c("Adenoma", "Tubular Adenoma", "Villous Adenoma", "Tubulovillous Adenoma", "Sessile Serrated Lesion/Polyp (SSL/P)", "Traditional Serrated Adenoma (TSA)", "Dysplasia")) input[[paste0(ns_prefix, "dysplasia_grade")]] else ""
-        new_entry_list[[paste0("Lesion", i, "_SizeCM")]] <- if(is_lesion_active) input[[paste0(ns_prefix, "size_cm")]] else ""
+        new_entry_list[[paste0("Lesion", i, "_SizeCM")]] <- if(is_lesion_active && morphology_i == "Invisible/Random Biopsies") "Biopsy only" else if(is_lesion_active) input[[paste0(ns_prefix, "size_cm")]] else ""
         new_entry_list[[paste0("Lesion", i, "_LocationLesion")]] <- if(is_lesion_active) input[[paste0(ns_prefix, "location")]] else ""
-        new_entry_list[[paste0("Lesion", i, "_ResectionCompleteness")]] <- if(is_lesion_active) input[[paste0(ns_prefix, "resection")]] else ""
+        new_entry_list[[paste0("Lesion", i, "_ResectionCompleteness")]] <- if(is_lesion_active && morphology_i == "Invisible/Random Biopsies") "Not Applicable" else if(is_lesion_active) input[[paste0(ns_prefix, "resection")]] else ""
+        new_entry_list[[paste0("Lesion", i, "_EMRperformed")]] <- if(is_lesion_active) input[[paste0(ns_prefix, "emr")]] else FALSE
+        new_entry_list[[paste0("Lesion", i, "_ESDperformed")]] <- if(is_lesion_active) input[[paste0(ns_prefix, "esd")]] else FALSE
         new_entry_list[[paste0("Lesion", i, "_Tstage")]] <- if(is_lesion_active && lesion_type_i == "Adenocarcinoma") input[[paste0(ns_prefix, "t_stage")]] else ""
         new_entry_list[[paste0("Lesion", i, "_Nstage")]] <- if(is_lesion_active && lesion_type_i == "Adenocarcinoma") input[[paste0(ns_prefix, "n_stage")]] else ""
         new_entry_list[[paste0("Lesion", i, "_Mstage")]] <- if(is_lesion_active && lesion_type_i == "Adenocarcinoma") input[[paste0(ns_prefix, "m_stage")]] else ""
