@@ -57,15 +57,6 @@ This repository contains R Shiny applications designed to facilitate the chart r
      shiny::runApp("review_app_ibd.R")
      ```
 
-## Data Preparation
-
-Before launching the applications, ensure that your data is preprocessed appropriately:
-
-- Use `pre_processing_for_crc_shiny_app.R` for CRC datasets.
-- Use `pre_processing_for_ibd_shiny_app.R` for IBD datasets.
-
-These scripts will format your data to be compatible with the Shiny applications.
-
 ## Contributing
 
 Contributions are welcome! If you have suggestions for improvements or encounter any issues, please open an issue or submit a pull request.
