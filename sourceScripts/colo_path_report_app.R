@@ -28,13 +28,14 @@ highlight_colitis_terms_regex <- "(?i)(colitis|proctitis|inflammation|inflammato
 highlight_location_regex <- "(?i)(rectum|rectosigmoid|sigmoid\\b|descending|splenic|transverse|hepatic|ascending|cecum|appendix|colon\\b|ileum)"
 highlight_procedure_regex <- "(?i)(polypectomy|biopsy|EMR|ESD|colectomy|endoscopic mucosal|endoscopic submucosal|ectomy|sigmoidoscopy)"
 highlight_size_regex <- "(?i)(\\d+(\\.\\d+)?\\s?(cm|mm))"
+highlight_break_regex <- "(>{2,}\\s*\\n+\\s*<{2,})"
 # --- End Configuration. Should not need to edit anything beyond here ---
 
 # --- One time setup ---
-rootDir <- "~/" # P:/ORD_Curtius_202210036D/shiny_app/
+rootOutDir <- "~/shiny_app_output/" #P:/ORD_Curtius_202210036D/shiny_app/shiny_app_output/
 max_lesions_to_capture <- 5
 annotation_type <- "path_colo_review"
-outDir <- file.path(rootDir, paste0("output_csvs_", annotation_type, "_", reviewer))
+outDir <- file.path(rootOutDir, paste0("output_csvs_", annotation_type, "_", reviewer))
 
 if (!dir.exists(outDir)) {
   message("Creating output directory: ", outDir)
@@ -186,6 +187,7 @@ ui <- fluidPage(
         .highlight-colitis { background-color: #98fb98; font-weight: bold;}
         .highlight-loc { background-color: #add8e6; font-weight: bold;}
         .highlight-size { background-color: #ffcccb; font-weight: bold;}
+        .highlight-break { background-color: red; font-weight: bold;}
         .highlight-proc { background-color: #E0FFFF; font-weight: bold;}
       ")),
       fluidRow(
@@ -521,11 +523,11 @@ server <- function(input, output, session) {
         highlighted_text <- text
         highlighted_text <- gsub(highlight_morphology_regex, "<span class='highlight-morph'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_lesion_type_regex, "<span class='highlight-ltype'>\\1</span>", highlighted_text, perl = TRUE)
-        #highlighted_text <- gsub(highlight_dysplasia_grade_regex, "<span class='highlight-dysp'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_resection_regex, "<span class='highlight-resect'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_colitis_terms_regex, "<span class='highlight-colitis'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_location_regex, "<span class='highlight-loc'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_size_regex, "<span class='highlight-size'>\\1</span>", highlighted_text, perl = TRUE)
+        highlighted_text <- gsub(highlight_break_regex, "<span class='highlight-break'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_procedure_regex, "<span class='highlight-proc'>\\1</span>", highlighted_text, perl = TRUE)
         HTML(highlighted_text)
       } else { HTML(paste("Error: Could not find Path Report for Patient ID", pid)) }
@@ -537,11 +539,11 @@ server <- function(input, output, session) {
         highlighted_text <- text
         highlighted_text <- gsub(highlight_morphology_regex, "<span class='highlight-morph'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_lesion_type_regex, "<span class='highlight-ltype'>\\1</span>", highlighted_text, perl = TRUE)
-        #highlighted_text <- gsub(highlight_dysplasia_grade_regex, "<span class='highlight-dysp'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_resection_regex, "<span class='highlight-resect'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_colitis_terms_regex, "<span class='highlight-colitis'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_location_regex, "<span class='highlight-loc'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_size_regex, "<span class='highlight-size'>\\1</span>", highlighted_text, perl = TRUE)
+        highlighted_text <- gsub(highlight_break_regex, "<span class='highlight-break'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_procedure_regex, "<span class='highlight-proc'>\\1</span>", highlighted_text, perl = TRUE)
         HTML(highlighted_text)
       } else { HTML(paste("Error: Could not find Colonoscopy Report for Patient ID", pid)) }
