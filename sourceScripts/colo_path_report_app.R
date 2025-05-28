@@ -3,9 +3,21 @@ library(shiny)
 library(shinyjs)
 library(purrr) # For map_dfr
 
-# --- Configuration --- EDIT THESE FIELDS ---
-reviewer <- "NAME_HERE"
+# --- PLEASE READ ---
+# Make a copy of this script in the reviewScripts_UseThese folder and add your name to the end of the script name
+# For example, rename as: "PATH_TO_DIR/shiny_app/reviewScripts_UseThese/colo_path_report_app_Brian.R"
+# I may have already done this for you.
 
+# -- In your copied script, ADD YOUR NAME HERE:
+# This app will save your reviews as a csv associated with your name.
+reviewer <- "NAME_HERE"
+# I may have already done this for you also.
+
+# Run the app with the following R command:
+# shiny::runApp("PATH_TO_DIR/shiny_app/reviewScripts_UseThese/colo_path_report_app_<YOUR_NAME>.R")
+# --- END ---
+
+# Optionally edit the regular expressions you want to highlight
 highlight_morphology_regex <- "(?i)(polypoid|flat|depressed|elevated|ulcerated|dalm|invisible|random|non-polypoid|pedunculated|sessile|mass)"
 highlight_lesion_type_regex <- paste0("(?i)(adenocarcinoma|low grade dysplasia|low-grade dysplasia|high grade dysplasia|high-grade dysplasia|",
                               "lgd|hgd|indefinite for dysplasia|no dysplasia|",
