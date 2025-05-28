@@ -5,7 +5,6 @@ library(purrr) # For map_dfr
 
 # --- Configuration --- EDIT THESE FIELDS ---
 reviewer <- "brian"
-optional_blacklisted_pids <- ""
 max_lesions_to_capture <- 5
 rootDir <- "~/" # P:/ORD_Curtius_202210036D/shiny_app/
 
@@ -72,7 +71,6 @@ if (length(existing_files) > 0) {
   all_prev_annotations <- purrr::map_dfr(existing_files, function(f) { tryCatch({ df <- read.csv(f, colClasses = "character", stringsAsFactors = FALSE, fill = TRUE, header = TRUE); if ("ID" %in% names(df)) { valid_ids <- df$ID[!is.na(df$ID) & nzchar(df$ID)]; if(length(valid_ids) > 0) { data.frame(ID = valid_ids, stringsAsFactors = FALSE) } else { NULL } } else { NULL } }, error = function(e) { NULL }) })
   if (!is.null(all_prev_annotations) && nrow(all_prev_annotations) > 0 && "ID" %in% names(all_prev_annotations)) { previously_reviewed_ids <- unique(all_prev_annotations$ID) }
 }
-if (exists("optional_blacklisted_pids") && nzchar(optional_blacklisted_pids)) { manual_blacklist <- trimws(unlist(strsplit(optional_blacklisted_pids, ",|;|\n"))); manual_blacklist <- manual_blacklist[nzchar(manual_blacklist)]; if(length(manual_blacklist) > 0) { previously_reviewed_ids <- unique(c(previously_reviewed_ids, manual_blacklist)) } }
 patient_data_for_session <- all_potential_patient_data[!all_potential_patient_data$ID %in% previously_reviewed_ids, ]
 message("Filtered patient list for this session. ", nrow(patient_data_for_session), " patients remaining to be reviewed.")
 if(nrow(patient_data_for_session) == 0) { message("WARNING: No unreviewed patients remaining for this session.") }
