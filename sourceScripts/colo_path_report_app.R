@@ -4,9 +4,7 @@ library(shinyjs)
 library(purrr) # For map_dfr
 
 # --- Configuration --- EDIT THESE FIELDS ---
-reviewer <- "brian"
-max_lesions_to_capture <- 5
-rootDir <- "~/" # P:/ORD_Curtius_202210036D/shiny_app/
+reviewer <- "NAME_HERE"
 
 highlight_morphology_regex <- "(?i)(polypoid|flat|depressed|elevated|ulcerated|dalm|invisible|random|non-polypoid|pedunculated|sessile|mass)"
 highlight_lesion_type_regex <- paste0("(?i)(adenocarcinoma|low grade dysplasia|low-grade dysplasia|high grade dysplasia|high-grade dysplasia|",
@@ -18,13 +16,13 @@ highlight_colitis_terms_regex <- "(?i)(colitis|proctitis|inflammation|inflammato
 highlight_location_regex <- "(?i)(rectum|rectosigmoid|sigmoid\\b|descending|splenic|transverse|hepatic|ascending|cecum|appendix|colon\\b|ileum)"
 highlight_procedure_regex <- "(?i)(polypectomy|biopsy|EMR|ESD|colectomy|endoscopic mucosal|endoscopic submucosal|ectomy|sigmoidoscopy)"
 highlight_size_regex <- "(?i)(\\d+(\\.\\d+)?\\s?(cm|mm))"
-# --- End Configuration ---
+# --- End Configuration. Should not need to edit anything beyond here ---
 
-# --- Setup ---
+# --- One time setup ---
+rootDir <- "~/" # P:/ORD_Curtius_202210036D/shiny_app/
+max_lesions_to_capture <- 5
 annotation_type <- "path_colo_review"
 outDir <- file.path(rootDir, paste0("output_csvs_", annotation_type, "_", reviewer))
-
-# --- End Configuration. Should not need to edit anything beyond here ---
 
 if (!dir.exists(outDir)) {
   message("Creating output directory: ", outDir)
