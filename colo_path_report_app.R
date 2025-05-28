@@ -10,17 +10,21 @@ max_lesions_to_capture <- 5 # Define max number of lesions to have fields for
 
 # ---  EDIT: Setup ---
 annotation_type <- "path_colo_review"
-rootDir <- "~/"
+rootDir <- "~/" # P:/ORD_Curtius_202210036D/shiny_app/
 outDir <- file.path(rootDir, paste0("output_csvs_", annotation_type, "_", reviewer))
 
 # EDIT: Optional regexes for highlighting text to make reviewing easier
-highlight_morphology_regex <- "(?i)(polypoid|flat|depressed|elevated|ulcerated|dalm|invisible|random|non-polypoid|pedunculated|sessile)"
-highlight_lesion_type_regex <- "(?i)(adenocarcinoma|dysplasia|dysplastic|tubulovillous adenoma|villous adenoma|tubular adenoma|sessile serrated|traditional serrated adenoma|ssl|ssa|tsa|hyperplastic|adenoma)" # Reordered for potential highlighting priority
-highlight_dysplasia_grade_regex <- "(?i)(low grade dysplasia|low-grade dysplasia|high grade dysplasia|high-grade dysplasia|lgd|hgd|indefinite for dysplasia|no dysplasia)"
+highlight_morphology_regex <- "(?i)(polypoid|flat|depressed|elevated|ulcerated|dalm|invisible|random|non-polypoid|pedunculated|sessile|mass)"
+highlight_lesion_type_regex <- paste0("(?i)(adenocarcinoma|low grade dysplasia|low-grade dysplasia|high grade dysplasia|high-grade dysplasia|",
+                                      "lgd|hgd|indefinite for dysplasia|no dysplasia|",
+                                      "dysplasia|dysplastic|tubulovillous adenoma|villous adenoma|tubular adenoma|",
+                                      "sessile serrated|traditional serrated adenoma|ssl|ssa|tsa|hyperplastic|adenoma)")
 highlight_resection_regex <- "(?i)(complete resection|incomplete resection|resected|margin|piecemeal|en bloc|R0|R1|R2|incompletely|completely)"
-highlight_colitis_terms_regex <- "(?i)(colitis|proctitis|inflammation|inflam|cryptitis|crypt abscess)"
-highlight_location_regex <- "(?i)(rectum|rectosigmoid|sigmoid|descending|splenic|transverse|hepatic|ascending|cecum|appendix|colon\\b|ileum)"
-highlight_procedure_regex <- "(?i)(polypectomy|biopsy|EMR|ESD|colectomy|endoscopic mucosal|endoscopic submucosal|ectomy)"
+highlight_colitis_terms_regex <- "(?i)(colitis|proctitis|inflammation|inflammatory|inflam|cryptitis|crypt abscess|mild|moderate|severe|acute|chronic)"
+highlight_location_regex <- "(?i)(rectum|rectosigmoid|sigmoid\\b|descending|splenic|transverse|hepatic|ascending|cecum|appendix|colon\\b|ileum)"
+highlight_procedure_regex <- "(?i)(polypectomy|biopsy|EMR|ESD|colectomy|endoscopic mucosal|endoscopic submucosal|ectomy|sigmoidoscopy)"
+highlight_size_regex <- "(?i)(\\d+(\\.\\d+)?\\s?(cm|mm))"
+highlight_break_regex <- "(?i)(<<<<<(\\n)+"
 # --- End Configuration. Should not need to edit anything beyond here ---
 
 if (!dir.exists(outDir)) {
@@ -186,7 +190,7 @@ ui <- fluidPage(
         .highlight-resect { background-color: #b0e0e6; font-weight: bold;}
         .highlight-colitis { background-color: #98fb98; font-weight: bold;}
         .highlight-loc { background-color: #add8e6; font-weight: bold;}
-        .highlight-date { background-color: #ffcccb; font-weight: bold;}
+        .highlight-size { background-color: #ffcccb; font-weight: bold;}
         .highlight-proc { background-color: #E0FFFF; font-weight: bold;}
       ")),
       uiOutput("patient_text_display", container = div, class = "scroll-box")
@@ -505,10 +509,11 @@ server <- function(input, output, session) {
         text <- text_row$Text; highlighted_text <- text
         highlighted_text <- gsub(highlight_morphology_regex, "<span class='highlight-morph'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_lesion_type_regex, "<span class='highlight-ltype'>\\1</span>", highlighted_text, perl = TRUE)
-        highlighted_text <- gsub(highlight_dysplasia_grade_regex, "<span class='highlight-dysp'>\\1</span>", highlighted_text, perl = TRUE)
+        #highlighted_text <- gsub(highlight_dysplasia_grade_regex, "<span class='highlight-dysp'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_resection_regex, "<span class='highlight-resect'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_colitis_terms_regex, "<span class='highlight-colitis'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_location_regex, "<span class='highlight-loc'>\\1</span>", highlighted_text, perl = TRUE)
+        highlighted_text <- gsub(highlight_size_regex, "<span class='highlight-size'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_procedure_regex, "<span class='highlight-proc'>\\1</span>", highlighted_text, perl = TRUE)
         HTML(highlighted_text)
       } else { HTML(paste("Error: Could not find text for Patient ID", pid)) }
