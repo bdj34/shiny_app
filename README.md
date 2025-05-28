@@ -6,7 +6,6 @@ This repository contains R Shiny applications designed to facilitate the chart r
 
 - **Interactive Review Interface**: User-friendly Shiny apps for reviewing and annotating clinical text data.
 - **Annotation Tools**: Capabilities to label phenotypes, lesions, dysplasia, and diagnostic features.
-- **Data Integration**: Incorporation of LLM outputs alongside source texts for comprehensive review.
 - **Data Export**: Export annotated data to CSV files for downstream analysis.
 
 ## Repository Contents
@@ -14,9 +13,6 @@ This repository contains R Shiny applications designed to facilitate the chart r
 - `colo_path_report_app.R`: Main Shiny application script for reviewing colonoscopy and pathology reports.
 - `review_app_crc.R`: Shiny app tailored for reviewing CRC-related data.
 - `review_app_ibd.R`: Shiny app tailored for reviewing IBD-related data.
-- `pre_processing_for_crc_shiny_app.R`: Preprocessing script for CRC data.
-- `pre_processing_for_ibd_shiny_app.R`: Preprocessing script for IBD data.
-- `shiny_app.Rproj`: R project file for the Shiny applications.
 
 ## Installation and Usage
 
