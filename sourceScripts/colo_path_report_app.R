@@ -53,7 +53,7 @@ message("Output file for this session: ", out_file)
 all_potential_patient_data <- data.frame(
   ID = c("PAT001", "PAT002", "PAT003", "PAT004", "PAT005", "PAT006", "PAT007"),
   ColoReportText = c( # Example Colonoscopy Reports
-    "Patient PAT001: Colonoscopy on January 10, 2023. Findings: Sigmoid colon shows a 1.5 cm polypoid lesion. Resection attempted. Background mucosa shows mild active colitis, proctitis only. Procedure: Polypectomy.",
+    "Patient PAT001: Colonoscopy on January 10, 2023.>>>>>>>>>\n\n<<<<<<<<<<< Findings: Sigmoid colon shows a 1.5 cm polypoid lesion. Resection attempted. Background mucosa shows mild active colitis, proctitis only. Procedure: Polypectomy.",
     "Patient PAT002: Cecum biopsy performed 2022-05-18 during colonoscopy for evaluation of extensive chronic colitis. One 0.8 cm adenoma seen and biopsied.",
     "Patient PAT003: Flexible sigmoidoscopy to rectum on April 2024. Multiple small polyps found, not removed. No evidence of colitis. Some invisible changes noted, random biopsies taken.",
     "Patient PAT004: Colectomy performed July 1, 2021 for a large mass. Pre-op colonoscopy noted a 3.0 cm mass.",
@@ -187,7 +187,7 @@ ui <- fluidPage(
         .highlight-colitis { background-color: #98fb98; font-weight: bold;}
         .highlight-loc { background-color: #add8e6; font-weight: bold;}
         .highlight-size { background-color: #ffcccb; font-weight: bold;}
-        .highlight-break { background-color: red; font-weight: bold;}
+        .highlight-break { background-color:black; color:white; font-weight: bold;}
         .highlight-proc { background-color: #E0FFFF; font-weight: bold;}
       ")),
       fluidRow(
@@ -527,7 +527,6 @@ server <- function(input, output, session) {
         highlighted_text <- gsub(highlight_colitis_terms_regex, "<span class='highlight-colitis'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_location_regex, "<span class='highlight-loc'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_size_regex, "<span class='highlight-size'>\\1</span>", highlighted_text, perl = TRUE)
-        highlighted_text <- gsub(highlight_break_regex, "<span class='highlight-break'>\\1</span>", highlighted_text, perl = TRUE)
         highlighted_text <- gsub(highlight_procedure_regex, "<span class='highlight-proc'>\\1</span>", highlighted_text, perl = TRUE)
         HTML(highlighted_text)
       } else { HTML(paste("Error: Could not find Path Report for Patient ID", pid)) }
